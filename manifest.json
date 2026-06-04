@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Cyberbullying Detector",
+  "version": "1.0",
+  "description": "Detects harmful content using AI",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "permissions": ["activeTab", "scripting"]
+}
