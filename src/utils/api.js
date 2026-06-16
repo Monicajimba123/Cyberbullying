@@ -1,15 +1,22 @@
 export async function analyzeText(text) {
-  // Simple rule-based demo (replace with real AI later)
+  try {
+    const res = await fetch("http://127.0.0.1:5000/predict", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ text })
+    });
 
-  const badWords = ["idiot", "stupid", "hate", "kill", "ugly"];
-
-  const lowerText = text.toLowerCase();
-
-  for (let word of badWords) {
-    if (lowerText.includes(word)) {
-      return "⚠️ Cyberbullying Detected";
+    if (!res.ok) {
+      throw new Error("Server error");
     }
-  }
 
-  return "✅ Safe Content";
+    const data = await res.json();
+    return data;
+
+  } catch (error) {
+    console.error("API Error:", error);
+    return { prediction: "Error" };
+  }
 }

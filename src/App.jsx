@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { analyzeText } from "./utils/api";
 
 function App() {
   const [text, setText] = useState("");
@@ -6,26 +7,30 @@ function App() {
   const [score, setScore] = useState(0);
   const [words, setWords] = useState([]);
 
-  const badWords = ["stupid", "idiot", "hate", "ugly", "dumb", "trash"];
+  const checkText = async () => {
+    try {
+      const response = await analyzeText(text);
 
-  const checkText = () => {
-    const lowerText = text.toLowerCase();
+      const prediction = response.prediction;
 
-    const detected = badWords.filter(word =>
-      lowerText.includes(word)
-    );
+      setResult(prediction);
 
-    setWords(detected);
+      let calculatedScore = 0;
 
-    let calculatedScore = detected.length * 25;
-    if (calculatedScore > 100) calculatedScore = 100;
+      if (prediction === "Safe Message") calculatedScore = 0;
+      else if (prediction === "Low Risk") calculatedScore = 30;
+      else if (prediction === "Medium Risk") calculatedScore = 60;
+      else calculatedScore = 90;
 
-    setScore(calculatedScore);
+      setScore(calculatedScore);
+      setWords([]);
 
-    if (calculatedScore === 0) setResult("Safe Message");
-    else if (calculatedScore <= 50) setResult("Low Risk");
-    else if (calculatedScore <= 75) setResult("Medium Risk");
-    else setResult("High Risk");
+    } catch (error) {
+      console.error("Error:", error);
+      setResult("Error");
+      setScore(0);
+      setWords([]);
+    }
   };
 
   const getColor = () => {
@@ -146,8 +151,7 @@ const styles = {
     background: "#2563eb",
     color: "white",
     fontWeight: "600",
-    cursor: "pointer",
-    transition: "0.2s"
+    cursor: "pointer"
   },
 
   resultBox: {

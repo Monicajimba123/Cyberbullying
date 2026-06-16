@@ -6,13 +6,25 @@ export default defineConfig({
   base: "./",
   plugins: [
     react(),
+
     viteStaticCopy({
       targets: [
         {
-          src: 'manifest.json',
+          src: 'public/manifest.json',
+          dest: ''
+        },
+        {
+          src: 'public/content.js',
+          dest: ''
+        },
+        {
+          src: 'public/icons.svg',
           dest: ''
         }
       ]
     })
-  ]
+  ],
+  build: {
+    outDir: 'dist'
+  }
 })
