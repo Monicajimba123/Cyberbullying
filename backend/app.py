@@ -1,60 +1,44 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
-import re
 
 app = Flask(__name__)
 CORS(app)
 
-# Load model safely
+# =========================
+# LOAD MODEL
+# =========================
 model = joblib.load("cyberbullying_model.pkl")
 
-
-# -------------------------
-# Text Preprocessing
-# -------------------------
-def preprocess(text):
-    text = str(text).lower()
-
-    # remove links
-    text = re.sub(r"http\S+", "", text)
-
-    # remove special characters
-    text = re.sub(r"[^a-zA-Z\s]", "", text)
-
-    # remove extra spaces
-    text = re.sub(r"\s+", " ", text).strip()
-
-    return text
-
-
-# -------------------------
-# Test Route (IMPORTANT)
-# -------------------------
+# =========================
+# ROOT CHECK
+# =========================
 @app.route("/")
 def home():
-    return "Backend is running 🚀"
+    return "Cyberbullying API is running 🚀"
 
-
-# -------------------------
-# Prediction Route
-# -------------------------
+# =========================
+# PREDICTION ENDPOINT
+# =========================
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json()
 
+        # Validate input
         if not data or "text" not in data:
-            return jsonify({"error": "No text provided"}), 400
+            return jsonify({
+                "error": "Missing 'text' field"
+            }), 400
 
         text = data["text"]
 
-        processed = preprocess(text)
-        result = model.predict([processed])[0]
+        # Direct prediction (IMPORTANT: no extra preprocessing here)
+        prediction = model.predict([text])[0]
 
         return jsonify({
-            "text": text,
-            "prediction": str(result)
+            "input": text,
+            "prediction": prediction
         })
 
     except Exception as e:
@@ -62,9 +46,8 @@ def predict():
             "error": str(e)
         }), 500
 
-
-# -------------------------
-# Run Server
-# -------------------------
+# =========================
+# RUN SERVER
+# =========================
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=5000)

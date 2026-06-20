@@ -1,41 +1,28 @@
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.svm import LinearSVC
-from sklearn.metrics import accuracy_score, classification_report
+import joblib
+import re
 
-# CHANGE THIS if your dataset file name is different
-df = pd.read_csv("dataset/final_hateXplain.csv")
+# =========================
+# LOAD MODEL
+# =========================
+model = joblib.load("cyberbullying_model.pkl")
 
-X = df["comment"]
-y = df["label"]
+# =========================
+# SAME CLEANING FUNCTION
+# =========================
+def clean_text(text):
+    text = str(text).lower()
+    text = re.sub(r"http\S+|www\S+", "", text)
+    text = re.sub(r"@\w+", "", text)
+    text = re.sub(r"#", "", text)
+    text = re.sub(r"\d+", "", text)
+    text = re.sub(r"[^a-z\s]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y,
-    test_size=0.2,
-    random_state=42,
-    stratify=y
-)
-
-vectorizer = TfidfVectorizer(
-    stop_words="english",
-    ngram_range=(1,2),
-    max_features=30000
-)
-
-X_train_vec = vectorizer.fit_transform(X_train)
-X_test_vec = vectorizer.transform(X_test)
-
-model = LinearSVC(class_weight="balanced")
-model.fit(X_train_vec, y_train)
-
-y_pred = model.predict(X_test_vec)
-
-print("\n🎯 Accuracy:", accuracy_score(y_test, y_pred))
-
-print("\n📊 Classification Report:\n")
-print(classification_report(y_test, y_pred))
-print("\n🔥 Manual Testing Mode (type 'exit' to quit)\n")
+# =========================
+# TEST MODE
+# =========================
+print("\n🔥 Cyberbullying Detector Test Mode\n")
 
 while True:
     text = input("Enter text: ")
@@ -43,7 +30,7 @@ while True:
     if text.lower() == "exit":
         break
 
-    text_vec = vectorizer.transform([text])
-    prediction = model.predict(text_vec)
+    cleaned = clean_text(text)
+    prediction = model.predict([cleaned])[0]
 
-    print("Prediction:", prediction[0])
+    print("Prediction:", prediction)

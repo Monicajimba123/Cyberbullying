@@ -1,58 +1,82 @@
 import pandas as pd
 import re
-import string
 
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.svm import LinearSVC
-from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, classification_report
-from sklearn.utils.class_weight import compute_class_weight
-import numpy as np
+from sklearn.utils import resample
 
 # =========================
-# Load dataset
+# LOAD DATASET
 # =========================
-df = pd.read_csv("dataset/final_hateXplain.csv")
+df = pd.read_csv("dataset/Dataset.csv", encoding="latin1")
+
+# Drop empty rows
+df = df.dropna(subset=["comment", "label"])
 
 # =========================
-# Better cleaning function
+# CLEAN LABELS (VERY IMPORTANT)
+# =========================
+df["label"] = df["label"].astype(str).str.lower().str.strip()
+
+df["label"] = df["label"].replace({
+    "0": "normal",
+    "1": "toxic",
+    "non-toxic": "normal",
+    "not toxic": "normal",
+    "hate": "toxic",
+    "offensive": "toxic",
+    "abusive": "toxic"
+})
+
+# Remove unknown labels
+df = df[df["label"].isin(["normal", "toxic"])]
+
+# =========================
+# CLEAN TEXT
 # =========================
 def clean_text(text):
     text = str(text).lower()
 
-    # remove URLs
     text = re.sub(r"http\S+|www\S+", "", text)
-
-    # remove mentions
     text = re.sub(r"@\w+", "", text)
-
-    # remove hashtags symbol only
     text = re.sub(r"#", "", text)
-
-    # remove numbers (helps reduce noise)
     text = re.sub(r"\d+", "", text)
-
-    # remove punctuation
-    text = text.translate(str.maketrans("", "", string.punctuation))
-
-    # remove extra spaces
+    text = re.sub(r"[^a-z\s]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
 
     return text
 
-
-# Apply cleaning
 df["comment"] = df["comment"].apply(clean_text)
 
+# Remove very short noise
+df = df[df["comment"].str.len() > 3]
+
 # =========================
-# Features & labels
+# BALANCE DATASET (KEY FIX)
+# =========================
+major = df[df.label == "normal"]
+minor = df[df.label == "toxic"]
+
+minor_up = resample(
+    minor,
+    replace=True,
+    n_samples=len(major),
+    random_state=42
+)
+
+df = pd.concat([major, minor_up])
+df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+# =========================
+# FEATURES & LABELS
 # =========================
 X = df["comment"]
 y = df["label"]
 
 # =========================
-# Train-test split
+# SPLIT
 # =========================
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -63,43 +87,53 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # =========================
-# Compute class weights (IMPORTANT IMPROVEMENT)
+# TF-IDF (OPTIMIZED)
 # =========================
-classes = np.unique(y_train)
-weights = compute_class_weight(class_weight="balanced", classes=classes, y=y_train)
-class_weight_dict = dict(zip(classes, weights))
+vectorizer = TfidfVectorizer(
+    analyzer="word",
+    ngram_range=(1, 2),
+    max_features=60000,
+    min_df=2,
+    stop_words="english",
+    sublinear_tf=True
+)
+
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
 
 # =========================
-# Stronger model pipeline
+# STRONG MODEL
 # =========================
-model = Pipeline([
-    ("tfidf", TfidfVectorizer(
-        analyzer="char_wb",       # strong for slang + spelling variations
-        ngram_range=(2, 5),       # better context than (1,3)
-        max_features=120000,
-        min_df=2,
-        sublinear_tf=True
-    )),
+model = LinearSVC(
+    C=0.8,
+    class_weight="balanced"
+)
 
-    ("clf", LinearSVC(
-        C=1.5,
-        class_weight=class_weight_dict
-    ))
-])
+model.fit(X_train_vec, y_train)
 
 # =========================
-# Train
+# EVALUATION
 # =========================
-model.fit(X_train, y_train)
+y_pred = model.predict(X_test_vec)
 
-# =========================
-# Predict
-# =========================
-y_pred = model.predict(X_test)
+print("\n🎯 Accuracy:", accuracy_score(y_test, y_pred))
 
-# =========================
-# Results
-# =========================
-print("Accuracy:", accuracy_score(y_test, y_pred))
-print("\nClassification Report:\n")
+print("\n📊 Classification Report:\n")
 print(classification_report(y_test, y_pred))
+
+# =========================
+# MANUAL TEST MODE
+# =========================
+print("\n🔥 Manual Testing Mode (type 'exit' to quit)\n")
+
+while True:
+    text = input("Enter text: ")
+
+    if text.lower() == "exit":
+        break
+
+    text = clean_text(text)
+    vec = vectorizer.transform([text])
+    prediction = model.predict(vec)
+
+    print("Prediction:", prediction[0])
