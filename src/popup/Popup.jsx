@@ -4,19 +4,31 @@ import "./popup.css";
 
 export default function Popup() {
   const [text, setText] = useState("");
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleAnalyze = async () => {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      alert("Please enter some text");
+      return;
+    }
 
     setLoading(true);
 
     try {
       const response = await analyzeText(text);
-      setResult(response.prediction);
+
+      console.log("API RESPONSE:", response);
+
+      // ✅ FIX: backend returns STRING, not object
+      if (!response || response === "error") {
+        setResult("error");
+      } else {
+        setResult(response);
+      }
+
     } catch (error) {
-      console.error(error);
+      console.error("Popup Error:", error);
       setResult("error");
     }
 
@@ -30,14 +42,18 @@ export default function Popup() {
       case "normal":
         return "✅ Normal Content";
 
-      case "offensive":
-        return "⚠️ Offensive Content";
+      case "toxic":
+        return "⚠️ Toxic Content";
 
       case "hatespeech":
+      case "hate speech":
         return "🚫 Hate Speech";
 
+      case "error":
+        return "❌ Error occurred";
+
       default:
-        return "❌ Error";
+        return `Prediction: ${result}`;
     }
   };
 
@@ -55,7 +71,7 @@ export default function Popup() {
           onChange={(e) => setText(e.target.value)}
         />
 
-        <button onClick={handleAnalyze}>
+        <button onClick={handleAnalyze} disabled={loading}>
           {loading ? "Analyzing..." : "Analyze Text"}
         </button>
 

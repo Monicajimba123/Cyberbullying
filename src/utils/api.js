@@ -8,15 +8,24 @@ export async function analyzeText(text) {
       body: JSON.stringify({ text })
     });
 
-    if (!res.ok) {
-      throw new Error("Server error");
+    const data = await res.json();
+
+    console.log("STATUS:", res.status);
+    console.log("API RESPONSE:", data);
+
+    // ❗ DON'T hide backend errors
+    if (data.error) {
+      return "backend_error: " + data.error;
     }
 
-    const data = await res.json();
-    return data;
+    if (!data.label) {
+      return "no_label_returned";
+    }
+
+    return data.label;
 
   } catch (error) {
     console.error("API Error:", error);
-    return { prediction: "Error" };
+    return "network_error";
   }
 }
